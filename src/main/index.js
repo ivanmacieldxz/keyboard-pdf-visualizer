@@ -9,7 +9,6 @@ function createWindow() {
     width: 900,
     height: 670,
     show: false,
-    fullscreen: true,
     autoHideMenuBar: true,
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
@@ -20,6 +19,7 @@ function createWindow() {
 
   mainWindow.on('ready-to-show', () => {
     mainWindow.show()
+    mainWindow.maximize()
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {

@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 
 function App() {
   const [isHovered, setIsHovered] = useState(false)
+  const [isHoveredSecondary, setIsHoveredSecondary] = useState(false)
   const [selectedRecent, setSelectedRecent] = useState(null)
 
   // Mock data for recent folders
@@ -79,36 +80,9 @@ function App() {
           </motion.div>
         </div>
 
-        {/* Content Section (Features and Recent Folders) */}
+        {/* Content Section (Recent Folders only) */}
         <div className="w-full max-w-3xl px-6 pb-24 flex flex-col gap-12">
           
-          {/* Features Full Width List (No title) */}
-          <div className="flex flex-col gap-6">
-            <div className="glass-panel p-6 transition-transform hover:-translate-y-1 hover:bg-slate-800/60 flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-              <div className="text-4xl">⌨️</div>
-              <div>
-                <h3 className="text-xl font-semibold mb-1">Keyboard Driven</h3>
-                <p className="text-base text-slate-400 leading-relaxed">Flick through pages and documents without touching your mouse.</p>
-              </div>
-            </div>
-            
-            <div className="glass-panel p-6 transition-transform hover:-translate-y-1 hover:bg-slate-800/60 flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-              <div className="text-4xl">⚡</div>
-              <div>
-                <h3 className="text-xl font-semibold mb-1">Lightning Fast</h3>
-                <p className="text-base text-slate-400 leading-relaxed">Optimized rendering ensures smooth transitions and instant loading.</p>
-              </div>
-            </div>
-
-            <div className="glass-panel p-6 transition-transform hover:-translate-y-1 hover:bg-slate-800/60 flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-              <div className="text-4xl">🔍</div>
-              <div>
-                <h3 className="text-xl font-semibold mb-1">Quick Search</h3>
-                <p className="text-base text-slate-400 leading-relaxed">Find exactly what you need with robust, integrated text search.</p>
-              </div>
-            </div>
-          </div>
-
           {/* Recent Folders Section */}
           <div className="flex flex-col mt-4">
             <div className="flex items-center justify-between mb-4 border-b border-white/10 pb-3">
@@ -134,6 +108,34 @@ function App() {
                 </div>
               ))}
             </div>
+
+            {/* Select Arbitrary Folder Button (Secondary) */}
+            <div className="mt-8 flex justify-center border-t border-white/5 pt-8">
+              <motion.button 
+                className="bg-white/5 border border-white/10 text-white font-semibold text-base py-3 px-6 rounded-lg hover:bg-white/10 flex items-center justify-center gap-2 overflow-hidden transition-colors"
+                onClick={handleSelectFolder}
+                onHoverStart={() => setIsHoveredSecondary(true)}
+                onHoverEnd={() => setIsHoveredSecondary(false)}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <span>Browse other folders</span>
+                <AnimatePresence>
+                  {isHoveredSecondary && (
+                    <motion.span
+                      initial={{ opacity: 0, x: -10, width: 0 }}
+                      animate={{ opacity: 1, x: 0, width: 'auto' }}
+                      exit={{ opacity: 0, x: -10, width: 0 }}
+                      transition={{ duration: 0.2, ease: "easeOut" }}
+                      className="whitespace-nowrap"
+                    >
+                      -&gt;
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+              </motion.button>
+            </div>
+
           </div>
 
         </div>
