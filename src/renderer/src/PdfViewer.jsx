@@ -146,12 +146,16 @@ export default function PdfViewer({ pdfPath, onBack, onNextPdf, onPrevPdf }) {
       // Previous/Next page with Ctrl+Arrow Up/Down
       else if (e.key === 'ArrowDown' && e.ctrlKey) {
         e.preventDefault()
-        setPageNum(prev => Math.min(prev + 1, numPages))
-        setTimeout(() => { if (containerRef.current) containerRef.current.scrollTop = 0 }, 10)
+        if (pageNum < numPages) {
+          setPageNum(prev => prev + 1)
+          setTimeout(() => { if (containerRef.current) containerRef.current.scrollTop = 0 }, 10)
+        }
       } else if (e.key === 'ArrowUp' && e.ctrlKey) {
         e.preventDefault()
-        setPageNum(prev => Math.max(prev - 1, 1))
-        setTimeout(() => { if (containerRef.current) containerRef.current.scrollTop = 0 }, 10)
+        if (pageNum > 1) {
+          setPageNum(prev => prev - 1)
+          setTimeout(() => { if (containerRef.current) containerRef.current.scrollTop = containerRef.current.scrollHeight }, 10)
+        }
       }
       // Next page with Space
       else if (e.key === ' ') {
