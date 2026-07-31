@@ -1,20 +1,11 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react'
 import * as pdfjsLib from 'pdfjs-dist'
 import { motion, AnimatePresence } from 'framer-motion'
-import 'pdfjs-dist/web/pdf_viewer.css'
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   'pdfjs-dist/build/pdf.worker.mjs',
   import.meta.url
 ).toString()
-
-const UnsearchableText = ({ text, className = '' }) => (
-  <span 
-    data-text={text} 
-    className={`before:content-[attr(data-text)] ${className}`}
-    aria-label={text}
-  />
-)
 
 export default function PdfViewer({ pdfPath, onBack, onNextPdf, onPrevPdf }) {
   const [pdfDoc, setPdfDoc] = useState(null)
@@ -23,14 +14,9 @@ export default function PdfViewer({ pdfPath, onBack, onNextPdf, onPrevPdf }) {
   const [loading, setLoading] = useState(true)
   const [errorMsg, setErrorMsg] = useState('')
   const [scale, setScale] = useState(1.5)
-  const [isSearching, setIsSearching] = useState(false)
-  const [searchText, setSearchText] = useState('')
-  const [lastSearch, setLastSearch] = useState('')
   const renderTaskRef = useRef(null)
   const canvasRef = useRef(null)
   const containerRef = useRef(null)
-  const textLayerRef = useRef(null)
-  const searchInputRef = useRef(null)
 
   useEffect(() => {
     let active = true
@@ -84,18 +70,6 @@ export default function PdfViewer({ pdfPath, onBack, onNextPdf, onPrevPdf }) {
       const renderTask = page.render(renderContext)
       renderTaskRef.current = renderTask
       await renderTask.promise
-
-      if (textLayerRef.current) {
-        textLayerRef.current.innerHTML = ''
-        const textContent = await page.getTextContent()
-        
-        const textLayer = new pdfjsLib.TextLayer({
-          textContentSource: textContent,
-          container: textLayerRef.current,
-          viewport: viewport,
-        })
-        await textLayer.render()
-      }
     } catch (err) {
       if (err.name !== 'RenderingCancelledException') {
         console.error('Render error:', err)
@@ -116,14 +90,6 @@ export default function PdfViewer({ pdfPath, onBack, onNextPdf, onPrevPdf }) {
 
   useEffect(() => {
     const handleKeyDown = (e) => {
-      // Search
-      if (e.ctrlKey && e.key === 'f') {
-        e.preventDefault()
-        setIsSearching(true)
-        setTimeout(() => searchInputRef.current?.focus(), 10)
-        return
-      }
-
       // Zoom with Ctrl + / Ctrl -
       if (e.ctrlKey && (e.key === '=' || e.key === '+')) {
         e.preventDefault()
@@ -187,27 +153,14 @@ export default function PdfViewer({ pdfPath, onBack, onNextPdf, onPrevPdf }) {
         }
       } 
       // Escape to back
-      else if (e.key === 'Escape' && !isSearching) {
-        handleBack()
+      else if (e.key === 'Escape') {
+        onBack()
       }
     }
     
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [pageNum, numPages, onNextPdf, onPrevPdf, onBack, isSearching])
-
-  const handleBack = () => {
-    window.api.stopFindInPage('clearSelection')
-    onBack()
-  }
-
-  const handleSearch = (forward = true) => {
-    if (!searchText) return
-    const isNext = searchText === lastSearch
-    window.api.findInPage(searchText, { findNext: isNext, forward })
-    setLastSearch(searchText)
-    setTimeout(() => searchInputRef.current?.focus(), 10)
-  }
+  }, [pageNum, numPages, onNextPdf, onPrevPdf, onBack])
 
   return (
     <div className="w-screen h-screen flex flex-col bg-slate-900 overflow-hidden relative">
@@ -219,86 +172,19 @@ export default function PdfViewer({ pdfPath, onBack, onNextPdf, onPrevPdf }) {
           className="absolute top-4 left-4 z-50"
         >
           <button 
-            onClick={handleBack}
+            onClick={onBack}
             className="text-sm font-semibold bg-black/50 text-slate-300 hover:text-white px-4 py-2 rounded-lg backdrop-blur focus:outline-none focus:ring-2 focus:ring-teal-accent"
           >
-            <UnsearchableText text="← Back to Gallery (Esc)" />
+            &larr; Back to Gallery (Esc)
           </button>
         </motion.div>
       </AnimatePresence>
 
       <div className="absolute top-4 right-4 z-50 bg-black/50 backdrop-blur text-white px-4 py-2 rounded-lg font-medium text-sm flex gap-4 items-center">
-        <UnsearchableText text={pdfPath.split(/[/\\]/).pop()} />
-        <span className="text-teal-accent">
-          <UnsearchableText text={`${pageNum} / ${numPages}`} />
-        </span>
-        <span className="text-slate-400 bg-black/50 px-2 py-1 rounded">
-          <UnsearchableText text={`${(scale * 100).toFixed(0)}%`} />
-        </span>
+        <span>{pdfPath.split(/[/\\]/).pop()}</span>
+        <span className="text-teal-accent">{pageNum} / {numPages}</span>
+        <span className="text-slate-400 bg-black/50 px-2 py-1 rounded">{(scale * 100).toFixed(0)}%</span>
       </div>
-
-      <AnimatePresence>
-        {isSearching && (
-          <motion.div 
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="absolute top-16 right-4 z-50 bg-slate-800 border border-white/10 shadow-2xl rounded-lg p-2 flex gap-2 items-center"
-          >
-            <input 
-              ref={searchInputRef}
-              type="text" 
-              value={searchText}
-              onChange={(e) => {
-                setSearchText(e.target.value)
-                if (!e.target.value) {
-                  window.api.stopFindInPage('clearSelection')
-                  setLastSearch('')
-                }
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && searchText) {
-                  e.preventDefault()
-                  handleSearch(!e.shiftKey)
-                }
-                if (e.key === 'Escape') {
-                  e.preventDefault()
-                  setIsSearching(false)
-                  setSearchText('')
-                  setLastSearch('')
-                  window.api.stopFindInPage('clearSelection')
-                  containerRef.current?.focus()
-                }
-              }}
-              placeholder="Find in page... (Enter)"
-              className="bg-black/20 text-white px-3 py-1.5 rounded outline-none focus:ring-2 focus:ring-teal-accent text-sm w-48"
-            />
-            <button 
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => handleSearch(false)}
-              className="text-slate-400 hover:text-white px-2"
-              title="Previous (Shift+Enter)"
-            >↑</button>
-            <button 
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => handleSearch(true)}
-              className="text-slate-400 hover:text-white px-2"
-              title="Next (Enter)"
-            >↓</button>
-            <button 
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => {
-                setIsSearching(false)
-                setSearchText('')
-                setLastSearch('')
-                window.api.stopFindInPage('clearSelection')
-                containerRef.current?.focus()
-              }}
-              className="text-slate-400 hover:text-red-400 px-2 ml-1 border-l border-white/10"
-            >✕</button>
-          </motion.div>
-        )}
-      </AnimatePresence>
       
       {/* PDF Container */}
       <div 
@@ -317,30 +203,14 @@ export default function PdfViewer({ pdfPath, onBack, onNextPdf, onPrevPdf }) {
             Loading PDF...
           </div>
         ) : (
-          <div className="relative inline-block max-w-none shadow-2xl rounded bg-white" style={{ flexShrink: 0 }}>
-            <style>{`
-              .textLayer {
-                pointer-events: auto !important;
-                z-index: 10 !important;
-              }
-              .textLayer ::selection {
-                background: rgba(0, 100, 255, 0.3) !important;
-                color: transparent !important;
-              }
-            `}</style>
-            <motion.canvas 
-              ref={canvasRef} 
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.2 }}
-              className="block" 
-            />
-            <div 
-              ref={textLayerRef} 
-              className="textLayer absolute top-0 left-0 w-full h-full"
-              style={{ '--scale-factor': scale }}
-            />
-          </div>
+          <motion.canvas 
+            ref={canvasRef} 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.2 }}
+            className="shadow-2xl rounded bg-white inline-block max-w-none" 
+            style={{ flexShrink: 0 }}
+          />
         )}
       </div>
     </div>
