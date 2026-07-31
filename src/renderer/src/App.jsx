@@ -90,6 +90,24 @@ function App() {
     }
   }
 
+  const handleRecentKeyDown = (e, folder) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      setSelectedRecent(folder)
+      if (selectedRecent?.id === folder.id) {
+        openFolder(folder.path) // Open directly on double-enter
+      }
+    }
+  }
+
+  const handlePdfKeyDown = (e, pdf) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      console.log('Open PDF:', pdf.path)
+      // To be implemented in feature/pdf-viewer
+    }
+  }
+
   // Process files for gallery view (filter & sort)
   const processedFiles = useMemo(() => {
     let filtered = pdfFiles.filter(pdf => pdf.name.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -119,7 +137,7 @@ function App() {
           <div>
             <button 
               onClick={() => setCurrentView('landing')}
-              className="mb-6 text-sm text-slate-400 hover:text-white transition-colors flex items-center gap-2"
+              className="mb-6 text-sm text-slate-400 hover:text-white transition-colors flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-teal-accent rounded-md px-2 py-1"
             >
               &larr; Back to Home
             </button>
@@ -135,14 +153,14 @@ function App() {
                 placeholder="Search by name..." 
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                className="bg-black/20 border border-white/10 rounded-lg px-4 py-2 text-white outline-none focus:border-teal-accent/50 transition-colors w-full sm:max-w-xs"
+                className="bg-black/20 border border-white/10 rounded-lg px-4 py-2 text-white outline-none focus:border-teal-accent/50 focus:ring-2 focus:ring-teal-accent transition-colors w-full sm:max-w-xs"
               />
               <div className="flex items-center gap-3 w-full sm:w-auto">
                 <span className="text-sm text-slate-400 whitespace-nowrap">Sort by:</span>
                 <select 
                   value={sortBy} 
                   onChange={e => setSortBy(e.target.value)}
-                  className="bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-white outline-none focus:border-teal-accent/50 transition-colors w-full sm:w-auto cursor-pointer"
+                  className="bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-white outline-none focus:border-teal-accent/50 focus:ring-2 focus:ring-teal-accent transition-colors w-full sm:w-auto cursor-pointer"
                 >
                   <option value="name_asc">Name (A-Z)</option>
                   <option value="name_desc">Name (Z-A)</option>
@@ -160,7 +178,13 @@ function App() {
           {/* List */}
           <div className="flex flex-col gap-3 pb-12">
             {processedFiles.map((pdf, idx) => (
-              <div key={idx} className="glass-panel p-4 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between cursor-pointer hover:bg-white/10 transition-colors">
+              <div 
+                key={idx} 
+                tabIndex={0}
+                onClick={() => console.log('Open PDF:', pdf.path)}
+                onKeyDown={(e) => handlePdfKeyDown(e, pdf)}
+                className="glass-panel p-4 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between cursor-pointer hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-teal-accent transition-all"
+              >
                 <div className="flex items-center gap-4 min-w-0">
                   <div className="text-3xl">📄</div>
                   <div className="min-w-0">
@@ -213,7 +237,7 @@ function App() {
 
           {/* Main CTA Button */}
           <motion.button 
-            className="bg-gradient-to-br from-teal-accent to-blue-accent text-white font-semibold text-lg py-4 px-8 rounded-xl shadow-[0_4px_15px_rgba(45,212,191,0.3)] hover:shadow-[0_8px_25px_rgba(45,212,191,0.5)] flex items-center justify-center gap-3 overflow-hidden"
+            className="bg-gradient-to-br from-teal-accent to-blue-accent text-white font-semibold text-lg py-4 px-8 rounded-xl shadow-[0_4px_15px_rgba(45,212,191,0.3)] hover:shadow-[0_8px_25px_rgba(45,212,191,0.5)] focus:outline-none focus:ring-4 focus:ring-teal-accent flex items-center justify-center gap-3 overflow-hidden"
             onClick={handleSelectFolder}
             onHoverStart={() => setIsHovered(true)}
             onHoverEnd={() => setIsHovered(false)}
@@ -257,7 +281,7 @@ function App() {
             <div className="flex items-center justify-between mb-4 border-b border-white/10 pb-3">
               <h2 className="text-2xl font-bold text-white">Recent Folders</h2>
               <button 
-                className="text-sm font-semibold px-5 py-2 rounded bg-white/10 hover:bg-white/20 transition-colors disabled:opacity-30 disabled:hover:bg-white/10 disabled:cursor-not-allowed"
+                className="text-sm font-semibold px-5 py-2 rounded bg-white/10 hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-teal-accent transition-colors disabled:opacity-30 disabled:hover:bg-white/10 disabled:cursor-not-allowed"
                 disabled={!selectedRecent}
                 onClick={handleOpenRecent}
               >
@@ -274,8 +298,10 @@ function App() {
                 recentFolders.map(folder => (
                   <div 
                     key={folder.id}
+                    tabIndex={0}
                     onClick={() => setSelectedRecent(folder)}
-                    className={`p-4 rounded-xl cursor-pointer transition-colors border ${selectedRecent?.id === folder.id ? 'bg-teal-accent/20 border-teal-accent/50' : 'bg-white/5 border-transparent hover:bg-white/10'}`}
+                    onKeyDown={(e) => handleRecentKeyDown(e, folder)}
+                    className={`p-4 rounded-xl cursor-pointer transition-all border focus:outline-none focus:ring-2 focus:ring-teal-accent ${selectedRecent?.id === folder.id ? 'bg-teal-accent/20 border-teal-accent/50' : 'bg-white/5 border-transparent hover:bg-white/10'}`}
                   >
                     <div className="font-medium text-lg text-slate-200">{folder.name}</div>
                     <div className="text-sm text-slate-500 truncate mt-1">{folder.path}</div>
@@ -287,7 +313,7 @@ function App() {
             {/* Select Arbitrary Folder Button (Secondary) */}
             <div className="mt-8 flex justify-center border-t border-white/5 pt-8">
               <motion.button 
-                className="bg-white/5 border border-white/10 text-white font-semibold text-base py-3 px-6 rounded-lg hover:bg-white/10 flex items-center justify-center gap-2 overflow-hidden transition-colors"
+                className="bg-white/5 border border-white/10 text-white font-semibold text-base py-3 px-6 rounded-lg hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-teal-accent flex items-center justify-center gap-2 overflow-hidden transition-colors"
                 onClick={handleSelectFolder}
                 onHoverStart={() => setIsHoveredSecondary(true)}
                 onHoverEnd={() => setIsHoveredSecondary(false)}
