@@ -301,6 +301,12 @@ export default function PdfViewer({ pdfPath, onBack, onNextPdf, onPrevPdf }) {
           </div>
         ) : (
           <div className="relative inline-block max-w-none shadow-2xl rounded bg-white" style={{ flexShrink: 0 }}>
+            <style>{`
+              .textLayer ::selection {
+                background: rgba(0, 100, 255, 0.3) !important;
+                color: transparent !important;
+              }
+            `}</style>
             <motion.canvas 
               ref={canvasRef} 
               initial={{ opacity: 0, scale: 0.95 }}
