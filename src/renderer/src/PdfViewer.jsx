@@ -238,14 +238,12 @@ export default function PdfViewer({ pdfPath, onBack, onNextPdf, onPrevPdf }) {
               value={searchText}
               onChange={(e) => {
                 setSearchText(e.target.value)
-                if (e.target.value) {
-                  window.api.findInPage(e.target.value)
-                } else {
+                if (!e.target.value) {
                   window.api.stopFindInPage('clearSelection')
                 }
               }}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') {
+                if (e.key === 'Enter' && searchText) {
                   window.api.findInPage(searchText, { findNext: true, forward: !e.shiftKey })
                 }
                 if (e.key === 'Escape') {
