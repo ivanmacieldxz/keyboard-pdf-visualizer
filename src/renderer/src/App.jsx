@@ -1,18 +1,41 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+
+function formatBytes(bytes, decimals = 2) {
+  if (!+bytes) return '0 Bytes'
+  const k = 1024
+  const dm = decimals < 0 ? 0 : decimals
+  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`
+}
+
+function formatDate(ms) {
+  return new Date(ms).toLocaleDateString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
 
 function App() {
   const [isHovered, setIsHovered] = useState(false)
   const [isHoveredSecondary, setIsHoveredSecondary] = useState(false)
   const [selectedRecent, setSelectedRecent] = useState(null)
-
+  
   // State for recent folders (persisted in localStorage)
   const [recentFolders, setRecentFolders] = useState([])
-
+  
   // State for the current view and active folder data
   const [currentView, setCurrentView] = useState('landing') // 'landing' | 'gallery'
   const [activeFolder, setActiveFolder] = useState(null)
   const [pdfFiles, setPdfFiles] = useState([])
+
+  // Gallery view controls
+  const [searchQuery, setSearchQuery] = useState('')
+  const [sortBy, setSortBy] = useState('name_asc')
 
   // Load recent folders on mount
   useEffect(() => {
@@ -26,7 +49,7 @@ function App() {
     // Extract folder name from path (rudimentary split)
     const name = folderPath.split(/[/\\]/).pop() || folderPath
     const newFolder = { id: Date.now(), name, path: folderPath }
-
+    
     setRecentFolders(prev => {
       // Remove if it already exists, then add to top
       const filtered = prev.filter(f => f.path !== folderPath)
@@ -42,6 +65,8 @@ function App() {
       setPdfFiles(files)
       setActiveFolder(folderPath)
       saveToRecent(folderPath)
+      setSearchQuery('')
+      setSortBy('name_asc')
       setCurrentView('gallery')
     } catch (error) {
       console.error('Failed to open folder:', error)
@@ -65,30 +90,103 @@ function App() {
     }
   }
 
+  // Process files for gallery view (filter & sort)
+  const processedFiles = useMemo(() => {
+    let filtered = pdfFiles.filter(pdf => pdf.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case 'name_asc': return a.name.localeCompare(b.name)
+        case 'name_desc': return b.name.localeCompare(a.name)
+        case 'size_asc': return a.size - b.size
+        case 'size_desc': return b.size - a.size
+        case 'created_asc': return a.birthtime - b.birthtime
+        case 'created_desc': return b.birthtime - a.birthtime
+        case 'modified_asc': return a.mtime - b.mtime
+        case 'modified_desc': return b.mtime - a.mtime
+        default: return a.name.localeCompare(b.name)
+      }
+    })
+    
+    return filtered
+  }, [pdfFiles, searchQuery, sortBy])
+
   if (currentView === 'gallery') {
     return (
-      <div className="min-h-screen bg-base-black text-white p-8">
-        <button
-          onClick={() => setCurrentView('landing')}
-          className="mb-6 text-sm text-slate-400 hover:text-white transition-colors flex items-center gap-2"
-        >
-          &larr; Back to Home
-        </button>
-        <h2 className="text-2xl font-bold mb-2 truncate text-teal-accent">{activeFolder}</h2>
-        <p className="text-slate-400 mb-8">{pdfFiles.length} PDF(s) found</p>
+      <div className="min-h-screen bg-base-black text-white p-8 flex flex-col items-center">
+        <div className="w-full max-w-4xl flex flex-col gap-6">
+          {/* Header */}
+          <div>
+            <button 
+              onClick={() => setCurrentView('landing')}
+              className="mb-6 text-sm text-slate-400 hover:text-white transition-colors flex items-center gap-2"
+            >
+              &larr; Back to Home
+            </button>
+            <h2 className="text-3xl font-bold mb-2 truncate text-teal-accent">{activeFolder}</h2>
+            <p className="text-slate-400">{pdfFiles.length} PDF(s) found</p>
+          </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6">
-          {pdfFiles.map((pdf, idx) => (
-            <div key={idx} className="glass-panel p-4 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-white/10 transition-colors aspect-square">
-              <div className="text-4xl mb-3">📄</div>
-              <div className="text-sm font-medium truncate w-full px-2" title={pdf.name}>{pdf.name}</div>
-            </div>
-          ))}
-          {pdfFiles.length === 0 && (
-            <div className="col-span-full text-center text-slate-500 py-12">
-              No PDFs found in this directory.
+          {/* Controls */}
+          {pdfFiles.length > 0 && (
+            <div className="flex flex-col sm:flex-row gap-4 bg-white/5 p-4 rounded-xl border border-white/10 items-center justify-between">
+              <input 
+                type="text" 
+                placeholder="Search by name..." 
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                className="bg-black/20 border border-white/10 rounded-lg px-4 py-2 text-white outline-none focus:border-teal-accent/50 transition-colors w-full sm:max-w-xs"
+              />
+              <div className="flex items-center gap-3 w-full sm:w-auto">
+                <span className="text-sm text-slate-400 whitespace-nowrap">Sort by:</span>
+                <select 
+                  value={sortBy} 
+                  onChange={e => setSortBy(e.target.value)}
+                  className="bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-white outline-none focus:border-teal-accent/50 transition-colors w-full sm:w-auto cursor-pointer"
+                >
+                  <option value="name_asc">Name (A-Z)</option>
+                  <option value="name_desc">Name (Z-A)</option>
+                  <option value="modified_desc">Modified (Newest)</option>
+                  <option value="modified_asc">Modified (Oldest)</option>
+                  <option value="created_desc">Created (Newest)</option>
+                  <option value="created_asc">Created (Oldest)</option>
+                  <option value="size_desc">Size (Largest)</option>
+                  <option value="size_asc">Size (Smallest)</option>
+                </select>
+              </div>
             </div>
           )}
+
+          {/* List */}
+          <div className="flex flex-col gap-3 pb-12">
+            {processedFiles.map((pdf, idx) => (
+              <div key={idx} className="glass-panel p-4 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between cursor-pointer hover:bg-white/10 transition-colors">
+                <div className="flex items-center gap-4 min-w-0">
+                  <div className="text-3xl">📄</div>
+                  <div className="min-w-0">
+                    <div className="font-medium text-lg text-slate-200 truncate" title={pdf.name}>{pdf.name}</div>
+                    <div className="text-sm text-slate-500 mt-1 flex flex-wrap gap-x-4 gap-y-1">
+                      <span>Created: {formatDate(pdf.birthtime)}</span>
+                      <span>Modified: {formatDate(pdf.mtime)}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="text-sm font-semibold text-teal-accent/80 whitespace-nowrap">
+                  {formatBytes(pdf.size)}
+                </div>
+              </div>
+            ))}
+            {pdfFiles.length > 0 && processedFiles.length === 0 && (
+              <div className="text-center text-slate-500 py-12 bg-white/5 rounded-xl border border-dashed border-white/10">
+                No PDFs match your search.
+              </div>
+            )}
+            {pdfFiles.length === 0 && (
+              <div className="text-center text-slate-500 py-12 bg-white/5 rounded-xl border border-dashed border-white/10">
+                No PDFs found in this directory.
+              </div>
+            )}
+          </div>
         </div>
       </div>
     )
@@ -99,22 +197,22 @@ function App() {
       {/* Background Orbs */}
       <div className="bg-orb w-[400px] h-[400px] bg-teal-accent -top-24 -left-24 fixed pointer-events-none"></div>
       <div className="bg-orb w-[500px] h-[500px] bg-blue-accent -bottom-36 -right-36 [animation-delay:-5s] fixed pointer-events-none"></div>
-
+      
       <div className="relative z-10 flex flex-col items-center">
-
+        
         {/* Hero Section - Full Screen */}
         <div className="h-screen w-full flex flex-col items-center justify-center p-6 sm:p-12 relative">
           <h1 className="text-5xl sm:text-6xl md:text-7xl font-extrabold mb-6 text-center tracking-tight">
             Keyboard <span className="text-gradient">PDF Visualizer</span>
           </h1>
-
+          
           <p className="text-xl sm:text-2xl text-slate-400 mb-12 text-center font-light max-w-2xl">
             A seamlessly interactive, high-performance gallery for your PDF files.
             Navigate at the speed of thought.
           </p>
 
           {/* Main CTA Button */}
-          <motion.button
+          <motion.button 
             className="bg-gradient-to-br from-teal-accent to-blue-accent text-white font-semibold text-lg py-4 px-8 rounded-xl shadow-[0_4px_15px_rgba(45,212,191,0.3)] hover:shadow-[0_8px_25px_rgba(45,212,191,0.5)] flex items-center justify-center gap-3 overflow-hidden"
             onClick={handleSelectFolder}
             onHoverStart={() => setIsHovered(true)}
@@ -139,7 +237,7 @@ function App() {
           </motion.button>
 
           {/* Scroll Visual Cue */}
-          <motion.div
+          <motion.div 
             className="absolute bottom-12 text-slate-400 flex flex-col items-center pointer-events-none"
             animate={{ y: [0, 10, 0] }}
             transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
@@ -153,12 +251,12 @@ function App() {
 
         {/* Content Section (Recent Folders only) */}
         <div className="w-full max-w-3xl px-6 pb-24 flex flex-col gap-12">
-
+          
           {/* Recent Folders Section */}
           <div className="flex flex-col mt-4">
             <div className="flex items-center justify-between mb-4 border-b border-white/10 pb-3">
               <h2 className="text-2xl font-bold text-white">Recent Folders</h2>
-              <button
+              <button 
                 className="text-sm font-semibold px-5 py-2 rounded bg-white/10 hover:bg-white/20 transition-colors disabled:opacity-30 disabled:hover:bg-white/10 disabled:cursor-not-allowed"
                 disabled={!selectedRecent}
                 onClick={handleOpenRecent}
@@ -166,15 +264,15 @@ function App() {
                 Open
               </button>
             </div>
-
+            
             <div className="flex flex-col gap-3">
               {recentFolders.length === 0 ? (
                 <div className="text-center text-slate-500 py-8 italic border border-dashed border-white/10 rounded-xl bg-white/5">
-                  No recent folders yet.
+                  No recent folders yet. Click the button above to get started.
                 </div>
               ) : (
                 recentFolders.map(folder => (
-                  <div
+                  <div 
                     key={folder.id}
                     onClick={() => setSelectedRecent(folder)}
                     className={`p-4 rounded-xl cursor-pointer transition-colors border ${selectedRecent?.id === folder.id ? 'bg-teal-accent/20 border-teal-accent/50' : 'bg-white/5 border-transparent hover:bg-white/10'}`}
@@ -188,7 +286,7 @@ function App() {
 
             {/* Select Arbitrary Folder Button (Secondary) */}
             <div className="mt-8 flex justify-center border-t border-white/5 pt-8">
-              <motion.button
+              <motion.button 
                 className="bg-white/5 border border-white/10 text-white font-semibold text-base py-3 px-6 rounded-lg hover:bg-white/10 flex items-center justify-center gap-2 overflow-hidden transition-colors"
                 onClick={handleSelectFolder}
                 onHoverStart={() => setIsHoveredSecondary(true)}

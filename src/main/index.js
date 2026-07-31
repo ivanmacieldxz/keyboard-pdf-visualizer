@@ -71,10 +71,17 @@ app.whenReady().then(() => {
       const files = fs.readdirSync(dirPath)
       const pdfFiles = files
         .filter(file => file.toLowerCase().endsWith('.pdf'))
-        .map(file => ({
-          name: file,
-          path: path.join(dirPath, file)
-        }))
+        .map(file => {
+          const filePath = path.join(dirPath, file)
+          const stats = fs.statSync(filePath)
+          return {
+            name: file,
+            path: filePath,
+            size: stats.size,
+            birthtime: stats.birthtimeMs,
+            mtime: stats.mtimeMs
+          }
+        })
       return pdfFiles
     } catch (error) {
       console.error(error)
