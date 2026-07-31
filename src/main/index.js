@@ -89,6 +89,16 @@ app.whenReady().then(() => {
     }
   })
 
+  ipcMain.handle('fs:readFile', async (_, filePath) => {
+    const fs = require('fs')
+    try {
+      return fs.readFileSync(filePath)
+    } catch (error) {
+      console.error(error)
+      return null
+    }
+  })
+
   createWindow()
 
   app.on('activate', function () {

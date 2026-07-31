@@ -4,7 +4,8 @@ import { electronAPI } from '@electron-toolkit/preload'
 // Custom APIs for renderer
 const api = {
   openDirectory: () => ipcRenderer.invoke('dialog:openDirectory'),
-  getPdfFiles: (dirPath) => ipcRenderer.invoke('fs:getPdfFiles', dirPath)
+  getPdfFiles: (dirPath) => ipcRenderer.invoke('fs:getPdfFiles', dirPath),
+  readFile: (filePath) => ipcRenderer.invoke('fs:readFile', filePath)
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import PdfViewer from './PdfViewer'
 
 function formatBytes(bytes, decimals = 2) {
   if (!+bytes) return '0 Bytes'
@@ -29,9 +30,10 @@ function App() {
   const [recentFolders, setRecentFolders] = useState([])
   
   // State for the current view and active folder data
-  const [currentView, setCurrentView] = useState('landing') // 'landing' | 'gallery'
+  const [currentView, setCurrentView] = useState('landing') // 'landing' | 'gallery' | 'pdf'
   const [activeFolder, setActiveFolder] = useState(null)
   const [pdfFiles, setPdfFiles] = useState([])
+  const [activePdfPath, setActivePdfPath] = useState(null)
 
   // Gallery view controls
   const [searchQuery, setSearchQuery] = useState('')
@@ -103,9 +105,14 @@ function App() {
   const handlePdfKeyDown = (e, pdf) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault()
-      console.log('Open PDF:', pdf.path)
-      // To be implemented in feature/pdf-viewer
+      setActivePdfPath(pdf.path)
+      setCurrentView('pdf')
     }
+  }
+
+  const openPdf = (pdf) => {
+    setActivePdfPath(pdf.path)
+    setCurrentView('pdf')
   }
 
   // Process files for gallery view (filter & sort)
@@ -128,6 +135,31 @@ function App() {
     
     return filtered
   }, [pdfFiles, searchQuery, sortBy])
+
+  if (currentView === 'pdf') {
+    const currentIndex = processedFiles.findIndex(p => p.path === activePdfPath)
+    
+    const handleNextPdf = () => {
+      if (currentIndex < processedFiles.length - 1) {
+        setActivePdfPath(processedFiles[currentIndex + 1].path)
+      }
+    }
+    
+    const handlePrevPdf = () => {
+      if (currentIndex > 0) {
+        setActivePdfPath(processedFiles[currentIndex - 1].path)
+      }
+    }
+    
+    return (
+      <PdfViewer 
+        pdfPath={activePdfPath}
+        onBack={() => setCurrentView('gallery')}
+        onNextPdf={handleNextPdf}
+        onPrevPdf={handlePrevPdf}
+      />
+    )
+  }
 
   if (currentView === 'gallery') {
     return (
@@ -181,7 +213,7 @@ function App() {
               <div 
                 key={idx} 
                 tabIndex={0}
-                onClick={() => console.log('Open PDF:', pdf.path)}
+                onClick={() => openPdf(pdf)}
                 onKeyDown={(e) => handlePdfKeyDown(e, pdf)}
                 className="glass-panel p-4 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between cursor-pointer hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-teal-accent transition-all"
               >
