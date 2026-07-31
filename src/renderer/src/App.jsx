@@ -39,6 +39,7 @@ function App() {
   // Gallery view controls
   const [searchQuery, setSearchQuery] = useState('')
   const [sortBy, setSortBy] = useState('name_asc')
+  const [visibleCount, setVisibleCount] = useState(50)
 
   // Load recent folders on mount
   useEffect(() => {
@@ -47,6 +48,19 @@ function App() {
       setRecentFolders(JSON.parse(stored))
     }
   }, [])
+
+  // Infinite scroll listener for gallery
+  useEffect(() => {
+    if (currentView !== 'gallery') return
+    const handleScroll = () => {
+      // Check if we are near the bottom of the page
+      if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 600) {
+        setVisibleCount(prev => prev + 50)
+      }
+    }
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [currentView])
 
   const saveToRecent = (folderPath) => {
     // Extract folder name from path (rudimentary split)
@@ -68,6 +82,7 @@ function App() {
     setSearchQuery('')
     setSortBy('name_asc')
     setPdfFiles([])
+    setVisibleCount(50)
     setIsLoadingGallery(true)
     setCurrentView('gallery')
     
@@ -160,7 +175,10 @@ function App() {
     return (
       <PdfViewer 
         pdfPath={activePdfPath}
-        onBack={() => setCurrentView('gallery')}
+        onBack={() => {
+          setVisibleCount(50) // Reset scroll position essentially
+          setCurrentView('gallery')
+        }}
         onNextPdf={handleNextPdf}
         onPrevPdf={handlePrevPdf}
       />
@@ -236,8 +254,8 @@ function App() {
                 </div>
               ))
             ) : (
-              processedFiles.map((pdf, idx) => (
-                <div 
+              processedFiles.slice(0, visibleCount).map((pdf, idx) => (
+                <div  
                   key={idx} 
                   tabIndex={0}
                   onClick={() => openPdf(pdf)}

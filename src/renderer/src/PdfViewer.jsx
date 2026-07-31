@@ -1,21 +1,27 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react'
 import * as pdfjsLib from 'pdfjs-dist'
-import pdfWorker from 'pdfjs-dist/build/pdf.worker.mjs?url'
 import { motion, AnimatePresence } from 'framer-motion'
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker
+pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+  'pdfjs-dist/build/pdf.worker.mjs',
+  import.meta.url
+).toString()
 
 export default function PdfViewer({ pdfPath, onBack, onNextPdf, onPrevPdf }) {
   const [pdfDoc, setPdfDoc] = useState(null)
   const [pageNum, setPageNum] = useState(1)
   const [numPages, setNumPages] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [errorMsg, setErrorMsg] = useState('')
+  const [scale, setScale] = useState(1.5)
+  const renderTaskRef = useRef(null)
   const canvasRef = useRef(null)
   const containerRef = useRef(null)
 
   useEffect(() => {
     let active = true
     setLoading(true)
+    setErrorMsg('')
     const loadPdf = async () => {
       try {
         const buffer = await window.api.readFile(pdfPath)
@@ -29,7 +35,10 @@ export default function PdfViewer({ pdfPath, onBack, onNextPdf, onPrevPdf }) {
         setLoading(false)
       } catch (err) {
         console.error('Error loading PDF:', err)
-        if (active) setLoading(false)
+        if (active) {
+          setErrorMsg(err.toString())
+          setLoading(false)
+        }
       }
     }
     loadPdf()
@@ -38,32 +47,61 @@ export default function PdfViewer({ pdfPath, onBack, onNextPdf, onPrevPdf }) {
 
   const renderPage = useCallback(async (num, pdf) => {
     if (!pdf || !canvasRef.current) return
-    const page = await pdf.getPage(num)
     
-    // Calculate scale to fit width or height (simple 1.5 default for now, we can optimize later)
-    const viewport = page.getViewport({ scale: 1.5 })
-    const canvas = canvasRef.current
-    const context = canvas.getContext('2d')
-    canvas.height = viewport.height
-    canvas.width = viewport.width
-
-    const renderContext = {
-      canvasContext: context,
-      viewport: viewport
+    if (renderTaskRef.current) {
+      renderTaskRef.current.cancel()
     }
-    
-    // We don't await because we want to let React finish rendering, but we can await it
-    await page.render(renderContext).promise
-  }, [])
+
+    try {
+      const page = await pdf.getPage(num)
+      
+      // Calculate scale to fit width or height
+      const viewport = page.getViewport({ scale })
+      const canvas = canvasRef.current
+      const context = canvas.getContext('2d')
+      canvas.height = viewport.height
+      canvas.width = viewport.width
+
+      const renderContext = {
+        canvasContext: context,
+        viewport: viewport
+      }
+      
+      const renderTask = page.render(renderContext)
+      renderTaskRef.current = renderTask
+      await renderTask.promise
+    } catch (err) {
+      if (err.name !== 'RenderingCancelledException') {
+        console.error('Render error:', err)
+        setErrorMsg(err.toString())
+      }
+    }
+  }, [scale])
 
   useEffect(() => {
     if (pdfDoc && !loading) {
       renderPage(pageNum, pdfDoc)
+      // Auto-focus container so native arrow-key panning works
+      if (containerRef.current) {
+        containerRef.current.focus()
+      }
     }
   }, [pageNum, pdfDoc, loading, renderPage])
 
   useEffect(() => {
     const handleKeyDown = (e) => {
+      // Zoom with Ctrl + / Ctrl -
+      if (e.ctrlKey && (e.key === '=' || e.key === '+')) {
+        e.preventDefault()
+        setScale(s => Math.min(s + 0.25, 5.0))
+        return
+      }
+      if (e.ctrlKey && e.key === '-') {
+        e.preventDefault()
+        setScale(s => Math.max(s - 0.25, 0.5))
+        return
+      }
+      
       // Previous/Next file with Ctrl+Arrow
       if (e.key === 'ArrowRight' && e.ctrlKey) {
         e.preventDefault()
@@ -77,16 +115,27 @@ export default function PdfViewer({ pdfPath, onBack, onNextPdf, onPrevPdf }) {
         e.preventDefault()
         setPageNum(prev => Math.min(prev + 1, numPages))
       } 
-      // Arrow keys for pan (scroll)
+      // Arrow keys for pan (scroll) / Page boundaries
       else if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-        // Native scrolling in the container will happen automatically if it's focused,
-        // but let's ensure the container has focus or scroll it manually
         if (containerRef.current) {
-          const step = 50
-          if (e.key === 'ArrowDown') containerRef.current.scrollTop += step
-          if (e.key === 'ArrowUp') containerRef.current.scrollTop -= step
-          if (e.key === 'ArrowLeft') containerRef.current.scrollLeft -= step
-          if (e.key === 'ArrowRight') containerRef.current.scrollLeft += step
+          const { scrollTop, scrollHeight, clientHeight } = containerRef.current
+          
+          if (e.key === 'ArrowDown' && Math.ceil(scrollTop + clientHeight) >= scrollHeight) {
+            e.preventDefault()
+            if (pageNum < numPages) {
+              setPageNum(prev => prev + 1)
+              // Reset scroll to top
+              setTimeout(() => { if (containerRef.current) containerRef.current.scrollTop = 0 }, 10)
+            }
+          } else if (e.key === 'ArrowUp' && scrollTop <= 0) {
+            e.preventDefault()
+            if (pageNum > 1) {
+              setPageNum(prev => prev - 1)
+              // Reset scroll to bottom
+              setTimeout(() => { if (containerRef.current) containerRef.current.scrollTop = containerRef.current.scrollHeight }, 10)
+            }
+          }
+          // Note: Native browser scrolling happens automatically if we don't preventDefault.
         }
       } 
       // Escape to back
@@ -117,9 +166,10 @@ export default function PdfViewer({ pdfPath, onBack, onNextPdf, onPrevPdf }) {
         </motion.div>
       </AnimatePresence>
 
-      <div className="absolute top-4 right-4 z-50 bg-black/50 backdrop-blur text-white px-4 py-2 rounded-lg font-medium text-sm flex gap-4">
+      <div className="absolute top-4 right-4 z-50 bg-black/50 backdrop-blur text-white px-4 py-2 rounded-lg font-medium text-sm flex gap-4 items-center">
         <span>{pdfPath.split(/[/\\]/).pop()}</span>
         <span className="text-teal-accent">{pageNum} / {numPages}</span>
+        <span className="text-slate-400 bg-black/50 px-2 py-1 rounded">{(scale * 100).toFixed(0)}%</span>
       </div>
       
       {/* PDF Container */}
@@ -128,6 +178,12 @@ export default function PdfViewer({ pdfPath, onBack, onNextPdf, onPrevPdf }) {
         className="flex-1 overflow-auto flex justify-center p-8 outline-none"
         tabIndex={0}
       >
+        {errorMsg && (
+          <div className="absolute bottom-10 left-10 text-red-500 bg-black/80 px-6 py-4 rounded-lg z-50 font-mono shadow-2xl max-w-2xl break-words">
+            {errorMsg}
+          </div>
+        )}
+        
         {loading ? (
           <div className="flex items-center justify-center h-full text-slate-400 animate-pulse">
             Loading PDF...
