@@ -34,6 +34,7 @@ function App() {
   const [activeFolder, setActiveFolder] = useState(null)
   const [pdfFiles, setPdfFiles] = useState([])
   const [activePdfPath, setActivePdfPath] = useState(null)
+  const [isLoadingGallery, setIsLoadingGallery] = useState(false)
 
   // Gallery view controls
   const [searchQuery, setSearchQuery] = useState('')
@@ -62,16 +63,21 @@ function App() {
   }
 
   const openFolder = async (folderPath) => {
+    setActiveFolder(folderPath)
+    saveToRecent(folderPath)
+    setSearchQuery('')
+    setSortBy('name_asc')
+    setPdfFiles([])
+    setIsLoadingGallery(true)
+    setCurrentView('gallery')
+    
     try {
       const files = await window.api.getPdfFiles(folderPath)
       setPdfFiles(files)
-      setActiveFolder(folderPath)
-      saveToRecent(folderPath)
-      setSearchQuery('')
-      setSortBy('name_asc')
-      setCurrentView('gallery')
     } catch (error) {
       console.error('Failed to open folder:', error)
+    } finally {
+      setIsLoadingGallery(false)
     }
   }
 
@@ -177,8 +183,12 @@ function App() {
             <p className="text-slate-400">{pdfFiles.length} PDF(s) found</p>
           </div>
 
-          {/* Controls */}
-          {pdfFiles.length > 0 && (
+            {isLoadingGallery && (
+              <div className="text-slate-400 font-medium mb-4 animate-pulse">
+                Scanning directory...
+              </div>
+            )}
+            {!isLoadingGallery && pdfFiles.length > 0 && (
             <div className="flex flex-col sm:flex-row gap-4 bg-white/5 p-4 rounded-xl border border-white/10 items-center justify-between">
               <input 
                 type="text" 
@@ -209,35 +219,54 @@ function App() {
 
           {/* List */}
           <div className="flex flex-col gap-3 pb-12">
-            {processedFiles.map((pdf, idx) => (
-              <div 
-                key={idx} 
-                tabIndex={0}
-                onClick={() => openPdf(pdf)}
-                onKeyDown={(e) => handlePdfKeyDown(e, pdf)}
-                className="glass-panel p-4 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between cursor-pointer hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-teal-accent transition-all"
-              >
-                <div className="flex items-center gap-4 min-w-0">
-                  <div className="text-3xl">📄</div>
-                  <div className="min-w-0">
-                    <div className="font-medium text-lg text-slate-200 truncate" title={pdf.name}>{pdf.name}</div>
-                    <div className="text-sm text-slate-500 mt-1 flex flex-wrap gap-x-4 gap-y-1">
-                      <span>Created: {formatDate(pdf.birthtime)}</span>
-                      <span>Modified: {formatDate(pdf.mtime)}</span>
+            {isLoadingGallery ? (
+              Array.from({ length: 5 }).map((_, idx) => (
+                <div key={idx} className="glass-panel p-4 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between animate-pulse">
+                  <div className="flex items-center gap-4 min-w-0 w-full">
+                    <div className="w-8 h-10 bg-white/10 rounded"></div>
+                    <div className="flex-1">
+                      <div className="h-5 bg-white/10 rounded w-3/4 sm:w-1/2 mb-2"></div>
+                      <div className="flex gap-4">
+                        <div className="h-3 bg-white/10 rounded w-20"></div>
+                        <div className="h-3 bg-white/10 rounded w-20"></div>
+                      </div>
                     </div>
                   </div>
+                  <div className="h-5 bg-white/10 rounded w-16 mt-2 sm:mt-0"></div>
                 </div>
-                <div className="text-sm font-semibold text-teal-accent/80 whitespace-nowrap">
-                  {formatBytes(pdf.size)}
+              ))
+            ) : (
+              processedFiles.map((pdf, idx) => (
+                <div 
+                  key={idx} 
+                  tabIndex={0}
+                  onClick={() => openPdf(pdf)}
+                  onKeyDown={(e) => handlePdfKeyDown(e, pdf)}
+                  className="glass-panel p-4 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between cursor-pointer hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-teal-accent transition-all"
+                >
+                  <div className="flex items-center gap-4 min-w-0">
+                    <div className="text-3xl">📄</div>
+                    <div className="min-w-0">
+                      <div className="font-medium text-lg text-slate-200 truncate" title={pdf.name}>{pdf.name}</div>
+                      <div className="text-sm text-slate-500 mt-1 flex flex-wrap gap-x-4 gap-y-1">
+                        <span>Created: {formatDate(pdf.birthtime)}</span>
+                        <span>Modified: {formatDate(pdf.mtime)}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-sm font-semibold text-teal-accent/80 whitespace-nowrap">
+                    {formatBytes(pdf.size)}
+                  </div>
                 </div>
-              </div>
-            ))}
-            {pdfFiles.length > 0 && processedFiles.length === 0 && (
+              ))
+            )}
+            
+            {!isLoadingGallery && pdfFiles.length > 0 && processedFiles.length === 0 && (
               <div className="text-center text-slate-500 py-12 bg-white/5 rounded-xl border border-dashed border-white/10">
                 No PDFs match your search.
               </div>
             )}
-            {pdfFiles.length === 0 && (
+            {!isLoadingGallery && pdfFiles.length === 0 && (
               <div className="text-center text-slate-500 py-12 bg-white/5 rounded-xl border border-dashed border-white/10">
                 No PDFs found in this directory.
               </div>
