@@ -146,7 +146,7 @@ export default function PdfViewer({ pdfPath, onBack, onNextPdf, onPrevPdf }) {
     
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [numPages, onNextPdf, onPrevPdf, onBack])
+  }, [pageNum, numPages, onNextPdf, onPrevPdf, onBack])
 
   return (
     <div className="w-screen h-screen flex flex-col bg-slate-900 overflow-hidden relative">
@@ -175,7 +175,7 @@ export default function PdfViewer({ pdfPath, onBack, onNextPdf, onPrevPdf }) {
       {/* PDF Container */}
       <div 
         ref={containerRef}
-        className="flex-1 overflow-auto flex justify-center p-8 outline-none"
+        className="flex-1 overflow-auto p-8 outline-none text-center"
         tabIndex={0}
       >
         {errorMsg && (
@@ -194,7 +194,8 @@ export default function PdfViewer({ pdfPath, onBack, onNextPdf, onPrevPdf }) {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.2 }}
-            className="shadow-2xl rounded bg-white" 
+            className="shadow-2xl rounded bg-white inline-block max-w-none" 
+            style={{ flexShrink: 0 }}
           />
         )}
       </div>
