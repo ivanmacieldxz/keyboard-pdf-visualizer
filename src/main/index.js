@@ -65,27 +65,45 @@ app.whenReady().then(() => {
   })
 
   ipcMain.handle('fs:getPdfFiles', async (_, dirPath) => {
-    const fs = require('fs')
+    const fs = require('fs').promises
     const path = require('path')
+    
     try {
-      const files = fs.readdirSync(dirPath)
-      const pdfFiles = files
-        .filter(file => file.toLowerCase().endsWith('.pdf'))
-        .map(file => {
+      const files = await fs.readdir(dirPath)
+      
+      const pdfFiles = []
+      for (const file of files) {
+        if (file.toLowerCase().endsWith('.pdf')) {
           const filePath = path.join(dirPath, file)
-          const stats = fs.statSync(filePath)
-          return {
-            name: file,
-            path: filePath,
-            size: stats.size,
-            birthtime: stats.birthtimeMs,
-            mtime: stats.mtimeMs
+          try {
+            const stats = await fs.stat(filePath)
+            pdfFiles.push({
+              name: file,
+              path: filePath,
+              size: stats.size,
+              birthtime: stats.birthtimeMs,
+              mtime: stats.mtimeMs
+            })
+          } catch (e) {
+            console.error('Error reading stats for', file, e)
           }
-        })
+        }
+      }
+      
       return pdfFiles
     } catch (error) {
       console.error(error)
       return []
+    }
+  })
+
+  ipcMain.handle('fs:readFile', async (_, filePath) => {
+    const fs = require('fs').promises
+    try {
+      return await fs.readFile(filePath)
+    } catch (error) {
+      console.error(error)
+      return null
     }
   })
 
