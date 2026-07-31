@@ -8,6 +8,14 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   import.meta.url
 ).toString()
 
+const UnsearchableText = ({ text, className = '' }) => (
+  <span 
+    data-text={text} 
+    className={`before:content-[attr(data-text)] ${className}`}
+    aria-label={text}
+  />
+)
+
 export default function PdfViewer({ pdfPath, onBack, onNextPdf, onPrevPdf }) {
   const [pdfDoc, setPdfDoc] = useState(null)
   const [pageNum, setPageNum] = useState(1)
@@ -201,15 +209,19 @@ export default function PdfViewer({ pdfPath, onBack, onNextPdf, onPrevPdf }) {
             onClick={handleBack}
             className="text-sm font-semibold bg-black/50 text-slate-300 hover:text-white px-4 py-2 rounded-lg backdrop-blur focus:outline-none focus:ring-2 focus:ring-teal-accent"
           >
-            &larr; Back to Gallery (Esc)
+            <UnsearchableText text="← Back to Gallery (Esc)" />
           </button>
         </motion.div>
       </AnimatePresence>
 
       <div className="absolute top-4 right-4 z-50 bg-black/50 backdrop-blur text-white px-4 py-2 rounded-lg font-medium text-sm flex gap-4 items-center">
-        <span>{pdfPath.split(/[/\\]/).pop()}</span>
-        <span className="text-teal-accent">{pageNum} / {numPages}</span>
-        <span className="text-slate-400 bg-black/50 px-2 py-1 rounded">{(scale * 100).toFixed(0)}%</span>
+        <UnsearchableText text={pdfPath.split(/[/\\]/).pop()} />
+        <span className="text-teal-accent">
+          <UnsearchableText text={`${pageNum} / ${numPages}`} />
+        </span>
+        <span className="text-slate-400 bg-black/50 px-2 py-1 rounded">
+          <UnsearchableText text={`${(scale * 100).toFixed(0)}%`} />
+        </span>
       </div>
 
       <AnimatePresence>
