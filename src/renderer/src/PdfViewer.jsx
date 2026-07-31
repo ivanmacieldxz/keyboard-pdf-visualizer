@@ -249,6 +249,7 @@ export default function PdfViewer({ pdfPath, onBack, onNextPdf, onPrevPdf }) {
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && searchText) {
                   window.api.findInPage(searchText, { findNext: true, forward: !e.shiftKey })
+                  setTimeout(() => searchInputRef.current?.focus(), 10)
                 }
                 if (e.key === 'Escape') {
                   setIsSearching(false)
@@ -261,16 +262,19 @@ export default function PdfViewer({ pdfPath, onBack, onNextPdf, onPrevPdf }) {
               className="bg-black/20 text-white px-3 py-1.5 rounded outline-none focus:ring-2 focus:ring-teal-accent text-sm w-48"
             />
             <button 
+              onMouseDown={(e) => e.preventDefault()}
               onClick={() => window.api.findInPage(searchText, { findNext: true, forward: false })}
               className="text-slate-400 hover:text-white px-2"
               title="Previous (Shift+Enter)"
             >↑</button>
             <button 
+              onMouseDown={(e) => e.preventDefault()}
               onClick={() => window.api.findInPage(searchText, { findNext: true, forward: true })}
               className="text-slate-400 hover:text-white px-2"
               title="Next (Enter)"
             >↓</button>
             <button 
+              onMouseDown={(e) => e.preventDefault()}
               onClick={() => {
                 setIsSearching(false)
                 setSearchText('')
