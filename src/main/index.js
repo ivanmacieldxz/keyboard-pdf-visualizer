@@ -107,6 +107,15 @@ app.whenReady().then(() => {
     }
   })
 
+  // Search APIs
+  ipcMain.on('find-in-page', (event, text, options) => {
+    event.sender.findInPage(text, options)
+  })
+
+  ipcMain.on('stop-find-in-page', (event, action) => {
+    event.sender.stopFindInPage(action)
+  })
+
   createWindow()
 
   app.on('activate', function () {

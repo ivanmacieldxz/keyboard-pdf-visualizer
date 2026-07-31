@@ -5,7 +5,9 @@ import { electronAPI } from '@electron-toolkit/preload'
 const api = {
   openDirectory: () => ipcRenderer.invoke('dialog:openDirectory'),
   getPdfFiles: (dirPath) => ipcRenderer.invoke('fs:getPdfFiles', dirPath),
-  readFile: (filePath) => ipcRenderer.invoke('fs:readFile', filePath)
+  readFile: (filePath) => ipcRenderer.invoke('fs:readFile', filePath),
+  findInPage: (text, options) => ipcRenderer.send('find-in-page', text, options),
+  stopFindInPage: (action) => ipcRenderer.send('stop-find-in-page', action)
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to
