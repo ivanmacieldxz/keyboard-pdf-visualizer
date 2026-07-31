@@ -102,14 +102,24 @@ export default function PdfViewer({ pdfPath, onBack, onNextPdf, onPrevPdf }) {
         return
       }
       
-      // Previous/Next file with Ctrl+Arrow
+      // Previous/Next file with Ctrl+Arrow Left/Right
       if (e.key === 'ArrowRight' && e.ctrlKey) {
         e.preventDefault()
         onNextPdf()
       } else if (e.key === 'ArrowLeft' && e.ctrlKey) {
         e.preventDefault()
         onPrevPdf()
-      } 
+      }
+      // Previous/Next page with Ctrl+Arrow Up/Down
+      else if (e.key === 'ArrowDown' && e.ctrlKey) {
+        e.preventDefault()
+        setPageNum(prev => Math.min(prev + 1, numPages))
+        setTimeout(() => { if (containerRef.current) containerRef.current.scrollTop = 0 }, 10)
+      } else if (e.key === 'ArrowUp' && e.ctrlKey) {
+        e.preventDefault()
+        setPageNum(prev => Math.max(prev - 1, 1))
+        setTimeout(() => { if (containerRef.current) containerRef.current.scrollTop = 0 }, 10)
+      }
       // Next page with Space
       else if (e.key === ' ') {
         e.preventDefault()
