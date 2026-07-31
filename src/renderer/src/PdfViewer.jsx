@@ -19,7 +19,8 @@ export default function PdfViewer({ pdfPath, onBack, onNextPdf, onPrevPdf }) {
     const loadPdf = async () => {
       try {
         const buffer = await window.api.readFile(pdfPath)
-        const loadingTask = pdfjsLib.getDocument({ data: buffer })
+        const data = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer)
+        const loadingTask = pdfjsLib.getDocument({ data })
         const pdf = await loadingTask.promise
         if (!active) return
         setPdfDoc(pdf)
@@ -137,7 +138,7 @@ export default function PdfViewer({ pdfPath, onBack, onNextPdf, onPrevPdf }) {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.2 }}
-            className="shadow-2xl rounded" 
+            className="shadow-2xl rounded bg-white" 
           />
         )}
       </div>
