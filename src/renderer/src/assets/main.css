@@ -9,7 +9,7 @@
 
 @layer base {
   body {
-    @apply bg-base-black text-white min-h-screen overflow-hidden select-none font-sans;
+    @apply bg-base-black text-white min-h-screen overflow-x-hidden select-none font-sans;
   }
 }
 
