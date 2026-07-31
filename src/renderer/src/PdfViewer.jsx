@@ -25,6 +25,7 @@ export default function PdfViewer({ pdfPath, onBack, onNextPdf, onPrevPdf }) {
   const [scale, setScale] = useState(1.5)
   const [isSearching, setIsSearching] = useState(false)
   const [searchText, setSearchText] = useState('')
+  const [lastSearch, setLastSearch] = useState('')
   const renderTaskRef = useRef(null)
   const canvasRef = useRef(null)
   const containerRef = useRef(null)
@@ -88,12 +89,12 @@ export default function PdfViewer({ pdfPath, onBack, onNextPdf, onPrevPdf }) {
         textLayerRef.current.innerHTML = ''
         const textContent = await page.getTextContent()
         
-        pdfjsLib.renderTextLayer({
+        const textLayer = new pdfjsLib.TextLayer({
           textContentSource: textContent,
           container: textLayerRef.current,
           viewport: viewport,
-          textDivs: []
         })
+        await textLayer.render()
       }
     } catch (err) {
       if (err.name !== 'RenderingCancelledException') {
@@ -200,6 +201,14 @@ export default function PdfViewer({ pdfPath, onBack, onNextPdf, onPrevPdf }) {
     onBack()
   }
 
+  const handleSearch = (forward = true) => {
+    if (!searchText) return
+    const isNext = searchText === lastSearch
+    window.api.findInPage(searchText, { findNext: isNext, forward })
+    setLastSearch(searchText)
+    setTimeout(() => searchInputRef.current?.focus(), 10)
+  }
+
   return (
     <div className="w-screen h-screen flex flex-col bg-slate-900 overflow-hidden relative">
       {/* UI Overlay */}
@@ -244,16 +253,19 @@ export default function PdfViewer({ pdfPath, onBack, onNextPdf, onPrevPdf }) {
                 setSearchText(e.target.value)
                 if (!e.target.value) {
                   window.api.stopFindInPage('clearSelection')
+                  setLastSearch('')
                 }
               }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && searchText) {
-                  window.api.findInPage(searchText, { findNext: true, forward: !e.shiftKey })
-                  setTimeout(() => searchInputRef.current?.focus(), 10)
+                  e.preventDefault()
+                  handleSearch(!e.shiftKey)
                 }
                 if (e.key === 'Escape') {
+                  e.preventDefault()
                   setIsSearching(false)
                   setSearchText('')
+                  setLastSearch('')
                   window.api.stopFindInPage('clearSelection')
                   containerRef.current?.focus()
                 }
@@ -263,13 +275,13 @@ export default function PdfViewer({ pdfPath, onBack, onNextPdf, onPrevPdf }) {
             />
             <button 
               onMouseDown={(e) => e.preventDefault()}
-              onClick={() => window.api.findInPage(searchText, { findNext: true, forward: false })}
+              onClick={() => handleSearch(false)}
               className="text-slate-400 hover:text-white px-2"
               title="Previous (Shift+Enter)"
             >↑</button>
             <button 
               onMouseDown={(e) => e.preventDefault()}
-              onClick={() => window.api.findInPage(searchText, { findNext: true, forward: true })}
+              onClick={() => handleSearch(true)}
               className="text-slate-400 hover:text-white px-2"
               title="Next (Enter)"
             >↓</button>
@@ -278,6 +290,7 @@ export default function PdfViewer({ pdfPath, onBack, onNextPdf, onPrevPdf }) {
               onClick={() => {
                 setIsSearching(false)
                 setSearchText('')
+                setLastSearch('')
                 window.api.stopFindInPage('clearSelection')
                 containerRef.current?.focus()
               }}
@@ -306,6 +319,10 @@ export default function PdfViewer({ pdfPath, onBack, onNextPdf, onPrevPdf }) {
         ) : (
           <div className="relative inline-block max-w-none shadow-2xl rounded bg-white" style={{ flexShrink: 0 }}>
             <style>{`
+              .textLayer {
+                pointer-events: auto !important;
+                z-index: 10 !important;
+              }
               .textLayer ::selection {
                 background: rgba(0, 100, 255, 0.3) !important;
                 color: transparent !important;
