@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, ipcMain } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, dialog } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
@@ -52,6 +52,42 @@ app.whenReady().then(() => {
 
   // IPC test
   ipcMain.on('ping', () => console.log('pong'))
+
+  ipcMain.handle('dialog:openDirectory', async () => {
+    const { canceled, filePaths } = await dialog.showOpenDialog({
+      properties: ['openDirectory']
+    })
+    if (canceled) {
+      return null
+    } else {
+      return filePaths[0]
+    }
+  })
+
+  ipcMain.handle('fs:getPdfFiles', async (_, dirPath) => {
+    const fs = require('fs')
+    const path = require('path')
+    try {
+      const files = fs.readdirSync(dirPath)
+      const pdfFiles = files
+        .filter(file => file.toLowerCase().endsWith('.pdf'))
+        .map(file => {
+          const filePath = path.join(dirPath, file)
+          const stats = fs.statSync(filePath)
+          return {
+            name: file,
+            path: filePath,
+            size: stats.size,
+            birthtime: stats.birthtimeMs,
+            mtime: stats.mtimeMs
+          }
+        })
+      return pdfFiles
+    } catch (error) {
+      console.error(error)
+      return []
+    }
+  })
 
   createWindow()
 
