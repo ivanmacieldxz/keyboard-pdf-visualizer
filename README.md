@@ -1,20 +1,34 @@
-# Keyboard-Centric PDF Visualizer
+# temp-app
 
-A modern, highly interactive desktop application for viewing and navigating PDF files efficiently using keyboard shortcuts.
+An Electron application with React
 
-## Features
+## Recommended IDE Setup
 
-- **Keyboard-Driven Navigation:** Fast, seamless navigation within and between PDF files.
-- **Directory Browsing:** Select a folder and easily flip through all PDFs inside.
-- **Modern UI:** Built with Electron, React, and Vite, featuring rich animations and a dark mode aesthetic.
-- **Search Capabilities:** Built-in text search functionality.
+- [VSCode](https://code.visualstudio.com/) + [ESLint](https://marketplace.visualstudio.com/items?itemName=dbaeumer.vscode-eslint) + [Prettier](https://marketplace.visualstudio.com/items?itemName=esbenp.prettier-vscode)
 
-## Development
+## Project Setup
 
-This project uses Gitflow workflow.
-- `main`: Stable releases (starting with this README)
-- `develop`: Main development branch
-- `feature/*`: New features
+### Install
 
-### Commands
-(To be added once the project is bootstrapped)
+```bash
+$ npm install
+```
+
+### Development
+
+```bash
+$ npm run dev
+```
+
+### Build
+
+```bash
+# For windows
+$ npm run build:win
+
+# For macOS
+$ npm run build:mac
+
+# For Linux
+$ npm run build:linux
+```
